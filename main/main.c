@@ -12,7 +12,6 @@
 #include "esp_now.h"
 #include "esp_log.h"
 
-
 #define JOY_X_GPIO   GPIO_NUM_4
 #define JOY_Y_GPIO   GPIO_NUM_5
 #define JOY_SW_GPIO  GPIO_NUM_6
@@ -30,16 +29,18 @@ typedef struct {
 } rc_packet_t;
 
 
-int read_x(void)
-{
+int read_x(void) {
+    
     int raw;
+    
     adc_oneshot_read(adc_handle, ADC_CHANNEL_4, &raw);
     return raw;
 }
 
-int read_y(void)
-{
+int read_y(void) {
+    
     int raw;
+
     adc_oneshot_read(adc_handle, ADC_CHANNEL_5, &raw);
     return raw;
 }
@@ -47,6 +48,7 @@ int read_y(void)
 int joy_to_percent(int value) {
 
     int delta = value - JOY_CENTER;
+    
     if (abs(delta) < JOY_DEADBAND)
         return 0;
 
@@ -57,7 +59,6 @@ int joy_to_percent(int value) {
         delta = -100;
     
     return delta;
-
 }
 
 int read_sw(void) {
@@ -113,11 +114,7 @@ void app_main(void) {
 
     esp_now_peer_info_t peer = {0};
 
-    uint8_t receiver_mac[] =
-    {
-        0x7C, 0x4F, 0xAD,
-        0xBB, 0xD6, 0x81
-    };
+    uint8_t receiver_mac[] = {0x7C, 0x4F, 0xAD, 0xBB, 0xD6, 0x81};
 
     memcpy(peer.peer_addr, receiver_mac, 6);
 
@@ -129,17 +126,17 @@ void app_main(void) {
 
     while(1)
     {
-        int x = joy_to_percent(read_x());
-        int y = joy_to_percent(read_y());
-        int sw = read_sw();
+
         rc_packet_t pkt;
 
-        pkt.x = x;
-        pkt.y = y;
-        pkt.sw = sw;
+        pkt.x = joy_to_percent(read_x());;
+        pkt.y = joy_to_percent(read_y());;
+        pkt.sw = read_sw();
 
-        esp_err_t err = esp_now_send(receiver_mac, (uint8_t *)&pkt, sizeof(pkt));
-printf("Sent packet: X: %d, Y: %d, SW: %d, err: %d\n", x, y, sw, err);
+        // esp_err_t err = 
+        esp_now_send(receiver_mac, (uint8_t *)&pkt, sizeof(pkt));
+        
+        // printf("Sent packet: X: %d, Y: %d, SW: %d, err: %d\n", x, y, sw, err);
         // printf("\rX: %d, Y: %d, SW: %d", x, y, sw);
         // fflush(stdout);
 
