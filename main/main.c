@@ -160,6 +160,25 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
+
+uint8_t mac[6];
+
+ESP_ERROR_CHECK(
+    esp_wifi_get_mac(
+        WIFI_IF_STA,
+        mac));
+
+ESP_LOGI(TAG,
+         "STA MAC %02X:%02X:%02X:%02X:%02X:%02X",
+         mac[0],
+         mac[1],
+         mac[2],
+         mac[3],
+         mac[4],
+         mac[5]);
+
+
+
     ESP_ERROR_CHECK(esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE));
     ESP_LOGI(TAG, "ESP-NOW init...");
     ESP_ERROR_CHECK(esp_now_init());
