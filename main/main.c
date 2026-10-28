@@ -130,7 +130,6 @@ void button_init(void) {
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE
     };
-
     ESP_ERROR_CHECK(gpio_config(&io_conf));
 }
 
@@ -145,7 +144,7 @@ static void espnow_recv_cb(const esp_now_recv_info_t *info, const uint8_t *data,
         else
             led_set(0, 10, 0);        
     }
-    ESP_LOGI(TAG, "Received data: battery: %d", ohi_status.battery);
+    // ESP_LOGI(TAG, "Received data: battery: %d", ohi_status.battery);
 }
 
 void app_main(void) {
@@ -162,7 +161,6 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
-//STA MAC 98:A3:16:9E:F0:40
 
     ESP_ERROR_CHECK(esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE));
     ESP_LOGI(TAG, "ESP-NOW init...");
@@ -179,19 +177,11 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_now_register_recv_cb(espnow_recv_cb));    
     led_set(0, 10, 0);
     while(1){
-
         rc_packet_t pkt;
         pkt.x = joy_to_percent(read_x());
         pkt.y = joy_to_percent(read_y());
         pkt.sw = read_sw();
-
-        // esp_err_t err = 
         esp_now_send(receiver_mac, (uint8_t *)&pkt, sizeof(pkt));
-        
-        // printf("Sent packet: X: %d, Y: %d, SW: %d, err: %d\n", x, y, sw, err);
-        // printf("\rX: %d, Y: %d, SW: %d", x, y, sw);
-        // fflush(stdout);
-
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
