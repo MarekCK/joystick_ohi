@@ -22,6 +22,19 @@
 
 #define TAG "joystick"
 static led_strip_handle_t led_strip;
+static adc_oneshot_unit_handle_t adc_handle;
+
+typedef struct {
+    int16_t x;
+    int16_t y;
+    uint8_t sw;
+} rc_packet_t;
+
+typedef struct {
+    int32_t battery;
+    int32_t left_delta;
+    int32_t right_delta;
+} ohi_status_t;
 
 void led_init(void) {
     
@@ -54,19 +67,9 @@ void led_set(uint8_t r, uint8_t g, uint8_t b) {
     }
 }
 
-static adc_oneshot_unit_handle_t adc_handle;
-
-typedef struct {
-    int16_t x;
-    int16_t y;
-    uint8_t sw;
-} rc_packet_t;
-
-
 int read_x(void) {
     
-    int raw;
-    
+    int raw;    
     adc_oneshot_read(adc_handle, ADC_CHANNEL_4, &raw);
     return raw;
 }
@@ -130,6 +133,19 @@ void button_init(void) {
     ESP_ERROR_CHECK(gpio_config(&io_conf));
 }
 
+static void espnow_recv_cb(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
+
+    volatile ohi_status_t ohi_status;
+
+    if (len == sizeof(ohi_status_t)) {
+        memcpy((void *)&ohi_status, data, sizeof(ohi_status_t));
+        if (ohi_status.battery < 1700) 
+            led_set(10, 0, 0);
+        else
+            led_set(0, 10, 0);        
+    }
+}
+
 void app_main(void) {
 
     led_init();
@@ -150,23 +166,19 @@ void app_main(void) {
     ESP_LOGI(TAG, "Init done");
 
     esp_now_peer_info_t peer = {0};
-
     uint8_t receiver_mac[] = {0x7C, 0x4F, 0xAD, 0xBB, 0xD6, 0x81};
-
     memcpy(peer.peer_addr, receiver_mac, 6);
-
     peer.channel = 1;
     peer.encrypt = false;
-
     ESP_ERROR_CHECK(esp_now_add_peer(&peer));    
     ESP_LOGI(TAG, "peer added");
+    ESP_ERROR_CHECK(esp_now_register_recv_cb(espnow_recv_cb));    
     led_set(0, 10, 0);
     while(1){
 
         rc_packet_t pkt;
-
-        pkt.x = joy_to_percent(read_x());;
-        pkt.y = joy_to_percent(read_y());;
+        pkt.x = joy_to_percent(read_x());
+        pkt.y = joy_to_percent(read_y());
         pkt.sw = read_sw();
 
         // esp_err_t err = 
