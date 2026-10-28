@@ -57,19 +57,20 @@ void led_init(void) {
 void led_set(uint8_t r, uint8_t g, uint8_t b) {
 
     if (r != 0 || g != 0 || b != 0) {
-            led_strip_set_pixel(led_strip, 0, r, g, b); 
-            /* Refresh the strip to send data */
-            led_strip_refresh(led_strip);
+        led_strip_set_pixel(led_strip, 0, r, g, b); 
+        /* Refresh the strip to send data */
+        led_strip_refresh(led_strip);
     } 
     else {
-            /* Set all LED off to clear all pixels */
-            led_strip_clear(led_strip);
+        /* Set all LED off to clear all pixels */
+        led_strip_clear(led_strip);
     }
 }
 
 int read_x(void) {
     
     int raw;    
+
     adc_oneshot_read(adc_handle, ADC_CHANNEL_4, &raw);
     return raw;
 }
@@ -144,6 +145,7 @@ static void espnow_recv_cb(const esp_now_recv_info_t *info, const uint8_t *data,
         else
             led_set(0, 10, 0);        
     }
+    ESP_LOGI(TAG, "Received data: battery: %d", ohi_status.battery);
 }
 
 void app_main(void) {
@@ -160,24 +162,7 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
-
-uint8_t mac[6];
-
-ESP_ERROR_CHECK(
-    esp_wifi_get_mac(
-        WIFI_IF_STA,
-        mac));
-
-ESP_LOGI(TAG,
-         "STA MAC %02X:%02X:%02X:%02X:%02X:%02X",
-         mac[0],
-         mac[1],
-         mac[2],
-         mac[3],
-         mac[4],
-         mac[5]);
-
-
+//STA MAC 98:A3:16:9E:F0:40
 
     ESP_ERROR_CHECK(esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE));
     ESP_LOGI(TAG, "ESP-NOW init...");
