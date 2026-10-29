@@ -24,9 +24,8 @@
 #define TAG "OHIJoystick"
 static led_strip_handle_t led_strip;
 static adc_oneshot_unit_handle_t adc_handle;
-static bool blink = false;
+// static bool blink = false;
 volatile uint32_t telemetry_counter = 0;
-volatile ohi_status_t ohi_status;
 
 typedef struct {
     int16_t x;
@@ -39,6 +38,12 @@ typedef struct {
     int32_t left_delta;
     int32_t right_delta;
 } ohi_status_t;
+
+static ohi_status_t ohi_status = {
+    .battery = 0,
+    .left_delta = 0,
+    .right_delta = 0
+};
 
 void led_init(void) {
 
@@ -154,12 +159,6 @@ static void espnow_recv_cb(const esp_now_recv_info_t *info, const uint8_t *data,
     if (len == sizeof(ohi_status_t)) {
         telemetry_counter = 0;
         memcpy((void *)&ohi_status, data, sizeof(ohi_status_t));
-        if (ohi_status.battery < 1700) {
-            led_set(10, 0, 0);        
-        }
-        else {
-            led_set(0, 10, 0);
-        }
     }
     // ESP_LOGI(TAG, "Received data: battery: %d", ohi_status.battery);
 }
@@ -197,9 +196,18 @@ void app_main(void) {
         telemetry_counter++;
         if (telemetry_counter > 30) {
             gpio_set_level(LOW_BAT_LED_GPIO, (telemetry_counter / 5) & 1);
+            led_set((telemetry_counter / 5) & 1 ? 10 : 0, 0, 0);
         }
         else {
             gpio_set_level(LOW_BAT_LED_GPIO, (ohi_status.battery < 1700));
+            if(telemetry_counter / 5 & 1) {
+                if (ohi_status.battery < 1700) {
+                    led_set(10, 0, 0);
+                }
+                else {
+                    led_set(0, 10, 0);
+                }
+            }
         }
         rc_packet_t pkt;
         pkt.x = joy_to_percent(read_x());
