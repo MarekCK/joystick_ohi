@@ -17,12 +17,16 @@
 #define JOY_X_GPIO   GPIO_NUM_4
 #define JOY_Y_GPIO   GPIO_NUM_5
 #define JOY_SW_GPIO  GPIO_NUM_6
+#define LOW_BAT_LED_GPIO    GPIO_NUM_10
 #define JOY_CENTER 1640
 #define JOY_DEADBAND 100
 
-#define TAG "joystick"
+#define TAG "OHIJoystick"
 static led_strip_handle_t led_strip;
 static adc_oneshot_unit_handle_t adc_handle;
+static bool blink = false;
+volatile uint32_t telemetry_counter = 0;
+volatile ohi_status_t ohi_status;
 
 typedef struct {
     int16_t x;
@@ -37,6 +41,18 @@ typedef struct {
 } ohi_status_t;
 
 void led_init(void) {
+
+    //external LED
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << LOW_BAT_LED_GPIO),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+
+    ESP_ERROR_CHECK(gpio_config(&io_conf));
+    gpio_set_level(LOW_BAT_LED_GPIO, 0);
     
     /* LED strip initialization with the GPIO and pixels number*/
     led_strip_config_t strip_config = {
@@ -135,14 +151,15 @@ void button_init(void) {
 
 static void espnow_recv_cb(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
 
-    volatile ohi_status_t ohi_status;
-
     if (len == sizeof(ohi_status_t)) {
+        telemetry_counter = 0;
         memcpy((void *)&ohi_status, data, sizeof(ohi_status_t));
-        if (ohi_status.battery < 1700) 
-            led_set(10, 0, 0);
-        else
-            led_set(0, 10, 0);        
+        if (ohi_status.battery < 1700) {
+            led_set(10, 0, 0);        
+        }
+        else {
+            led_set(0, 10, 0);
+        }
     }
     // ESP_LOGI(TAG, "Received data: battery: %d", ohi_status.battery);
 }
@@ -177,11 +194,21 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_now_register_recv_cb(espnow_recv_cb));    
     led_set(0, 10, 0);
     while(1){
+        telemetry_counter++;
+        if (telemetry_counter > 30) {
+            gpio_set_level(LOW_BAT_LED_GPIO, (telemetry_counter / 5) & 1);
+        }
+        else {
+            gpio_set_level(LOW_BAT_LED_GPIO, (ohi_status.battery < 1700));
+        }
         rc_packet_t pkt;
         pkt.x = joy_to_percent(read_x());
         pkt.y = joy_to_percent(read_y());
         pkt.sw = read_sw();
-        esp_now_send(receiver_mac, (uint8_t *)&pkt, sizeof(pkt));
+        esp_err_t err = esp_now_send(receiver_mac, (uint8_t *)&pkt, sizeof(pkt));
+        if (err != ESP_OK) {
+           ESP_LOGW(TAG, "send failed %s", esp_err_to_name(err));
+        }
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
